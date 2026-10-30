@@ -313,7 +313,7 @@ function renderHome() {
   ${last.length ? `<section class="section"><h2>Your last mock exams</h2><div class="history">${last.map(h =>
     `${esc(h.date)} — <b style="color:var(--ink)">${fmt(h.score)} / ${MAX_SCORE}</b> · ${h.c} correct · ${h.w} wrong · ${h.s} blank`).join("<br>")}</div></section>` : ""}
 
-  <footer>Unofficial study aid made from the course slides. These are not real exam questions, and the actual questions are unknown. Your progress is saved only in this browser.</footer>`;
+  <footer>Unofficial study aid made from the course slides and, for Preview, the course programme. These are not real exam questions, and the actual questions are unknown. Your progress is saved only in this browser.</footer>`;
 
   document.getElementById("m-exam").onclick = startExam;
   document.getElementById("m-practice").onclick = () => {
