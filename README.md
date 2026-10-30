@@ -8,7 +8,7 @@ Practice questions for the **Database Management Systems / Databases Management*
 
 ## What's inside
 
-- **245 questions from the slides** (multiple choice and true/false) in 8 sections, each with a short explanation and its source.
+- **234 questions from the slides** (multiple choice and true/false) in 8 sections, each with a short explanation and its source.
 - **67 Preview questions** on topics that have no slides yet, clearly marked and left out of the mock exam.
 - **Mock exam**: 25 random questions spread across the Class sections, 40-minute timer, free navigation, and scoring of +0.8 per correct answer, −0.8/n per wrong answer (n = number of options), 0 for a blank, maximum 20. You get a full review with explanations at the end.
 - **Section tests**: run every question of one section, with instant feedback.
@@ -20,17 +20,17 @@ Practice questions for the **Database Management Systems / Databases Management*
 
 Direct links: `#exam`, `#bank`, `#s1` … `#s11`, in the order of the table below (for example `…/data-management-exam-drill/#s5`).
 
-Sections are grouped by topic. The number shows the class that mainly teaches the topic, and the slide files are listed in the table.
+Questions stand on their own: any example you need is in the question text, so you do not have to remember a specific slide. Sections are grouped by topic. The number shows the class that mainly teaches the topic, and the slide files are listed in the table.
 
 | Section | Topic | Source | Questions |
 |---|---|---|---|
 | Class 1.1 | ER Modelling Concepts | Class 1 | 28 |
 | Class 1.2 | From ER to Relational | Class 1, 2 | 30 |
-| Class 2.1 | Modelling Cases: Library, Festival, TV Shows | Class 1, 2, 3 | 31 |
-| Class 3.1 | Timetables, Alternative Keys & Ride Hailing | Class 3, 5 | 21 |
+| Class 2.1 | Modelling Patterns | Class 1, 2, 3 | 27 |
+| Class 3.1 | Alternative Keys & Requirements | Class 3, 5 | 21 |
 | Class 4.1 | Relational Model & Normalization | Class 4, 5 | 36 |
 | Class 4.2 | SQL Basics & DDL | Class 4, 5 | 38 |
-| Class 5.1 | Reading Models: Private Clinic & Car-pooling | Class 4, 5 | 39 |
+| Class 5.1 | Reading Models & Business Rules | Class 4, 5 | 32 |
 | Class 5.2 | Loading Data with SSMS | Class 5 | 22 |
 | Preview LU3 | Data Manipulation (DML) | Course programme, no slides yet | 18 |
 | Preview LU4 | Joins, Aggregations & Integrity | Course programme, no slides yet | 22 |
