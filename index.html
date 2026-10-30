@@ -176,6 +176,7 @@ const MAX_SCORE = 20;                     // top of the scale, normally EXAM_SIZ
 const WRONG_PENALTY = n => POINTS / n;    // points lost on a wrong answer, n = number of options
 const WRONG_LABEL = "−0.8/n";             // how the penalty is written on the page
 const MIN_EXAM_GRADE = 8;                 // minimum exam grade stated on the course slides (Class 1)
+const EXAM_INCLUDES_PREVIEW = false;      // true = mock exams also draw from the Preview sections
 // ---------------------------------------------------------------------------------------------------------
 
 const LETTERS = "ABCDEFGH";
@@ -214,14 +215,23 @@ const rich = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 const codeHTML = q => q.code ? `<pre class="code">${esc(q.code)}</pre>` : "";
 const questionHTML = q => `<p class="qtext">${rich(q.q)}</p>${codeHTML(q)}`;
 const chapterCount = c => QUESTIONS.filter(q => q.c === c).length;
+const secLabel = c => `${SECTIONS[c].code} · ${SECTIONS[c].title}`;
+const sectionIds = preview => Object.keys(SECTIONS).map(Number).filter(c => !!SECTIONS[c].preview === preview);
+const taughtQuestions = QUESTIONS.filter(q => !SECTIONS[q.c].preview);
+const previewCount = QUESTIONS.length - taughtQuestions.length;
+const sectionRow = c => `
+        <label class="chap"><input type="checkbox" id="ch${c}" data-c="${c}" ${selected.has(c) ? "checked" : ""}>
+        <span><span class="mono muted">${esc(SECTIONS[c].code)}</span>&nbsp; ${esc(SECTIONS[c].title)}<br><span class="muted" style="font-size:13px">${SECTIONS[c].preview ? "Source" : "Slides"}: ${esc(SECTIONS[c].src)}</span></span><span class="n">${chapterCount(c)}</span>
+        <button class="btn" data-drill="${c}" style="padding:4px 10px;font-size:13px">Test</button></label>`;
 
 // An item is a question plus its option order for this run (true/false keeps True first).
 const makeItem = q => ({ q, order: q.tf ? [0, 1] : shuffle(q.o.map((_, i) => i)), pick: null, flag: false });
 
-// Spread the 25 exam questions across chapters in proportion to their size (largest remainder).
+// Spread the exam questions across sections in proportion to their size (largest remainder).
 function pickExam() {
-  const chs = Object.keys(CHAPTERS).map(Number);
-  const raw = chs.map(c => ({ c, x: chapterCount(c) / QUESTIONS.length * EXAM_SIZE }));
+  const chs = EXAM_INCLUDES_PREVIEW ? Object.keys(SECTIONS).map(Number) : sectionIds(false);
+  const total = chs.reduce((n, c) => n + chapterCount(c), 0);
+  const raw = chs.map(c => ({ c, x: chapterCount(c) / total * EXAM_SIZE }));
   raw.forEach(r => r.n = Math.floor(r.x));
   let left = EXAM_SIZE - raw.reduce((s, r) => s + r.n, 0);
   raw.slice().sort((a, b) => (b.x - b.n) - (a.x - a.n)).slice(0, left).forEach(r => r.n++);
@@ -237,7 +247,7 @@ function recordAnswer(q, correct) {
 // ---------- state ----------
 let S = { view: "home" };
 let tick = null;
-const selected = new Set(store.get("chapters", Object.keys(CHAPTERS).map(Number)));
+const selected = new Set(store.get("chapters", sectionIds(false)));
 
 function go(view, extra = {}) {
   clearInterval(tick);
@@ -258,7 +268,7 @@ function renderHome() {
   <header class="hero">
     <p class="eyebrow">NOVA IMS · Database Management Systems · 2026/2027</p>
     <h1>Database Management Exam Drill</h1>
-    <p class="muted">${QUESTIONS.length} multiple-choice and true/false questions built from the course slides (Class 1 to Class 5), grouped into ${Object.keys(CHAPTERS).length} chapters, each with a short explanation and a chapter reference.</p>
+    <p class="muted">${taughtQuestions.length} multiple-choice and true/false questions built from the course slides (Class 1 to Class 5), plus ${previewCount} Preview questions on topics with no slides yet. Each has a short explanation and its source.</p>
     <div class="rule-strip">
       <span><b>${EXAM_SIZE}</b> questions</span><span><b>${EXAM_MINUTES}</b> min</span>
       <span>correct <b>+${POINTS}</b></span><span>wrong <b>${WRONG_LABEL}</b></span><span>blank <b>${BLANK_POINTS}</b></span><span>max <b>${MAX_SCORE}</b></span>
@@ -268,26 +278,31 @@ function renderHome() {
 
   <div class="modes">
     <button class="mode" id="m-exam"><span class="k">Indicative format</span><strong>Mock exam</strong><span>${EXAM_SIZE} random questions, ${EXAM_MINUTES}-minute timer, free navigation, scoring with penalties. Review every answer at the end.</span></button>
-    <button class="mode" id="m-practice"><span class="k">Instant feedback</span><strong>Practice</strong><span>Pick chapters below and answer one by one. The correct answer and explanation appear right after you choose.</span></button>
+    <button class="mode" id="m-practice"><span class="k">Instant feedback</span><strong>Practice</strong><span>Pick sections below and answer one by one. The correct answer and explanation appear right after you choose.</span></button>
     <button class="mode" id="m-misses" ${missCount ? "" : "disabled"}><span class="k">${missCount} saved</span><strong>My mistakes</strong><span>${missCount ? "Questions you got wrong before. Answer them correctly to clear them from the list." : "Empty for now. Wrong answers from the mock exam and practice collect here."}</span></button>
     <button class="mode" id="m-bank"><span class="k">Read mode</span><strong>Question bank</strong><span>Browse and search all ${QUESTIONS.length} questions with answers and explanations.</span></button>
   </div>
 
   <section class="section">
-    <div class="row" style="justify-content:space-between"><h2>Chapters for practice</h2>
+    <div class="row" style="justify-content:space-between"><h2>Sections for practice</h2>
       <span class="row"><button class="link" id="all">All</button><button class="link" id="none">None</button></span></div>
     <div class="chap-list">
-      ${Object.entries(CHAPTERS).map(([c, t]) => `
-        <label class="chap"><input type="checkbox" id="ch${c}" data-c="${c}" ${selected.has(+c) ? "checked" : ""}>
-        <span><span class="mono muted">Ch.${c}</span>&nbsp; ${esc(t)}</span><span class="n">${chapterCount(+c)}</span>
-        <button class="btn" data-drill="${c}" style="padding:4px 10px;font-size:13px">Test</button></label>`).join("")}
+      ${sectionIds(false).map(sectionRow).join("")}
     </div>
-    <p class="muted" style="font-size:13px">Tick chapters for Practice, or press Test to run all questions of one chapter. The mock exam always draws from all chapters, in proportion to their size.</p>
+    <p class="muted" style="font-size:13px">Sections are grouped by topic, and the number shows the class that mainly teaches it (Class 5.1 is the first topic from Class 5). Tick sections for Practice, or press Test to run one section. The mock exam draws from these sections, in proportion to their size.</p>
+  </section>
+
+  <section class="section">
+    <h2>Preview: not taught yet</h2>
+    <p class="note"><b>Not based on slides.</b> These topics are in the course programme, but there are no slides for them yet. The questions come from general SQL knowledge and may not match how the course teaches them. ${EXAM_INCLUDES_PREVIEW ? "They are included in the mock exam." : "They are not included in the mock exam."}</p>
+    <div class="chap-list">
+      ${sectionIds(true).map(sectionRow).join("")}
+    </div>
   </section>
 
   <section class="section">
     <h2>What is covered</h2>
-    <p class="note">ER modelling, ER to relational conversion, the course case studies, the relational model, normalization, SQL DDL and loading data with SSMS. <b>Not covered yet:</b> SELECT queries, joins, aggregations, views, stored procedures, triggers, transactions and indexes. They are listed in the course plan but not in the slides available so far.</p>
+    <p class="note">The Class sections cover what the slides teach so far: ER modelling, ER to relational conversion, the course case studies, the relational model, normalization, SQL DDL and loading data with SSMS. SELECT queries, joins, aggregations, views, procedures, triggers, transactions and indexes come later in the programme, so they appear only in Preview.</p>
   </section>
 
   <section class="section">
@@ -314,12 +329,12 @@ function renderHome() {
   app.querySelectorAll("[data-drill]").forEach(b => b.onclick = e => { e.preventDefault(); startChapter(+b.dataset.drill); });
   const sync = () => { store.set("chapters", [...selected]); renderHome(); };
   app.querySelectorAll(".chap input").forEach(el => el.onchange = () => { el.checked ? selected.add(+el.dataset.c) : selected.delete(+el.dataset.c); store.set("chapters", [...selected]); });
-  document.getElementById("all").onclick = () => { Object.keys(CHAPTERS).forEach(c => selected.add(+c)); sync(); };
+  document.getElementById("all").onclick = () => { Object.keys(SECTIONS).forEach(c => selected.add(+c)); sync(); };
   document.getElementById("none").onclick = () => { selected.clear(); sync(); };
 }
 
 const startExam = () => go("exam", { items: pickExam(), cur: 0, end: Date.now() + EXAM_MINUTES * 60000 });
-const startChapter = c => go("practice", { items: shuffle(QUESTIONS.filter(q => q.c === c)).map(makeItem), cur: 0, label: `Ch.${c} · ${CHAPTERS[c]}`, chapter: c });
+const startChapter = c => go("practice", { items: shuffle(QUESTIONS.filter(q => q.c === c)).map(makeItem), cur: 0, label: secLabel(c), chapter: c });
 
 // Practice ends on the same results screen as the exam, counting only the questions reached.
 function finishPractice() {
@@ -351,7 +366,7 @@ function explainHTML(item) {
     : `<span class="verdict bad">Wrong · −${fmt(penalty(q))}</span>`;
   return `<div class="explain">${verdict}<br><b>Answer ${right}:</b> ${rich(q.o[q.a])}<br>${rich(q.e)}</div>`;
 }
-const metaHTML = (item, n, total) => `<div class="qmeta"><span class="eyebrow">Question ${n} of ${total}</span><span class="eyebrow">Ch.${item.q.c} · ${esc(CHAPTERS[item.q.c])} · ${item.q.tf ? "True/False" : item.q.o.length + " options"}</span></div>`;
+const metaHTML = (item, n, total) => `<div class="qmeta"><span class="eyebrow">Question ${n} of ${total}</span><span class="eyebrow">${esc(secLabel(item.q.c))} · ${item.q.tf ? "True/False" : item.q.o.length + " options"}</span></div>`;
 
 // ---------- EXAM ----------
 function renderExam() {
@@ -461,10 +476,10 @@ function renderResults() {
     </div>
     <div class="grid">${items.map((it, i) => `<span class="cell ${it.pick === null ? "" : it.pick === it.q.a ? "r-good" : "r-bad"}" style="display:grid;place-items:center">${i + 1}</span>`).join("")}</div>
 
-    <h2 style="margin-top:12px">By chapter</h2>
+    <h2 style="margin-top:12px">By section</h2>
     <div class="tbl"><table>
-      <tr><th>Chapter</th><th class="num">Qs</th><th class="num">✓</th><th class="num">✗</th><th class="num">○</th><th class="num">Points</th></tr>
-      ${Object.keys(byCh).sort((a, b) => a - b).map(k => { const r = byCh[k]; return `<tr><td>Ch.${k} ${esc(CHAPTERS[k])}</td><td class="num">${r.n}</td><td class="num">${r.c}</td><td class="num">${r.w}</td><td class="num">${r.s}</td><td class="num">${fmt(r.pts)}</td></tr>`; }).join("")}
+      <tr><th>Section</th><th class="num">Qs</th><th class="num">✓</th><th class="num">✗</th><th class="num">○</th><th class="num">Points</th></tr>
+      ${Object.keys(byCh).sort((a, b) => a - b).map(k => { const r = byCh[k]; return `<tr><td>${esc(secLabel(k))}</td><td class="num">${r.n}</td><td class="num">${r.c}</td><td class="num">${r.w}</td><td class="num">${r.s}</td><td class="num">${fmt(r.pts)}</td></tr>`; }).join("")}
     </table></div>
 
     <div class="row" style="justify-content:space-between;margin-top:12px">
@@ -480,7 +495,7 @@ function renderResults() {
         : `<p class="muted">Nothing here.</p>`}
     </div>
     <div class="row" style="margin-top:12px">
-      <button class="btn primary" id="again">${S.chapter ? "Repeat this chapter" : "New mock exam"}</button>
+      <button class="btn primary" id="again">${S.chapter ? "Repeat this section" : "New mock exam"}</button>
       <button class="btn" id="home">Back to start</button>
     </div>
   </div>`;
@@ -536,7 +551,7 @@ function renderBank() {
     <div class="row" style="justify-content:space-between"><h1 style="font-size:30px">Question bank</h1><button class="btn" id="home">Back to start</button></div>
     <div class="tools">
       <input id="q" type="search" placeholder="Search questions, answers, explanations" value="${esc(S.query)}">
-      <select id="ch"><option value="0">All chapters</option>${Object.entries(CHAPTERS).map(([c, t]) => `<option value="${c}" ${S.ch === c ? "selected" : ""}>Ch.${c} ${esc(t)}</option>`).join("")}</select>
+      <select id="ch"><option value="0">All sections</option>${Object.keys(SECTIONS).map(c => `<option value="${c}" ${S.ch === c ? "selected" : ""}>${esc(secLabel(c))}</option>`).join("")}</select>
     </div>
     <p class="muted" id="count"></p>
     <div id="list"></div>
@@ -549,7 +564,7 @@ function renderBank() {
     count.textContent = `${rows.length} question${rows.length === 1 ? "" : "s"}. Open one to see the answer.`;
     // The answer is stored first in the data, so rotate the options to keep it from always showing as A.
     const bankOrder = q => q.tf ? [0, 1] : q.o.map((_, i) => (i + q.id * 7) % q.o.length);
-    list.innerHTML = rows.map(q => `<details class="bank"><summary><span class="id">Q${q.id} · Ch.${q.c}</span><span>${rich(q.q)}</span></summary>
+    list.innerHTML = rows.map(q => `<details class="bank"><summary><span class="id">Q${q.id} · ${esc(SECTIONS[q.c].code)}</span><span>${rich(q.q)}</span></summary>
       ${codeHTML(q)}
       <ol type="A">${bankOrder(q).map(i => `<li class="${i === q.a ? "ok" : ""}">${rich(q.o[i])}</li>`).join("")}</ol>
       <div class="explain">${rich(q.e)}</div></details>`).join("");
@@ -560,10 +575,10 @@ function renderBank() {
   draw();
 }
 
-// Direct links: #exam, #bank, #ch1, #ch2 … open that mode straight away.
-const hash = location.hash.slice(1), chMatch = hash.match(/^ch(\d+)$/);
+// Direct links: #exam, #bank, #s1, #s2 … open that mode straight away (old #ch1 links still work).
+const hash = location.hash.slice(1), chMatch = hash.match(/^(?:s|ch)(\d+)$/);
 if (hash === "exam") startExam();
 else if (hash === "bank") go("bank", { query: "", ch: "0" });
-else if (chMatch && CHAPTERS[chMatch[1]]) startChapter(+chMatch[1]);
+else if (chMatch && SECTIONS[chMatch[1]]) startChapter(+chMatch[1]);
 else render();
 </script>
